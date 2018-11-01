@@ -18,8 +18,14 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     voice.init().then((_) {
-      print("Yay!"); 
+      voice.speakText('This is a test to see if I can speak to you the user.');
     });
+  }
+
+  @override
+  void dispose() {
+    voice.dispose();
+    super.dispose();
   }
 
   @override

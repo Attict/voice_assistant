@@ -53,8 +53,20 @@ class VoiceAssistant {
   /// and what text is coming back from listening.
 
 
-  Future<Null> speakText(String text) async {}
+  Future<Null> speakText(String text) async {
+    if (_state == ready) {
+      try {
+        await _channel.invokeMethod('speakText', <String, dynamic> {
+          'text': text
+        });
+      } on PlatformException catch (e) {
+        throw new VoiceAssistantException(e.code, e.message);
+      }
+    }
+  }
+
   Future<Null> startListening() async {}
+
   Future<String> stopListening() async {
     return null; 
   }
