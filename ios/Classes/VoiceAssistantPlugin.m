@@ -20,6 +20,7 @@
     NSString *text = call.arguments[@"text"];
     //NSInteger rate = call.arguments[@"rate"];
     [self speakText:text];
+    result(nil);
   } else {
     result(FlutterMethodNotImplemented);
   }

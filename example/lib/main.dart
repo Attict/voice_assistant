@@ -13,12 +13,13 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final VoiceAssistant voice = new VoiceAssistant();
+  bool voiceReady = false;
 
   @override
   void initState() {
     super.initState();
     voice.init().then((_) {
-      voice.speakText('This is a test to see if I can speak to you the user.');
+      voiceReady = true;
     });
   }
 
@@ -36,7 +37,13 @@ class _MyAppState extends State<MyApp> {
           title: const Text('Plugin example app'),
         ),
         body: new Center(
-          child: new Text('Running'),
+          child: new Container(
+            child: new RaisedButton(child: const Text('Speak Something'), onPressed: () {
+              if (voiceReady) {
+                voice.speakText('This is a test to see if I can speak to you the user.');
+              }
+            })
+          )
         ),
       ),
     );

@@ -5,9 +5,10 @@ import 'package:flutter/services.dart';
 class VoiceAssistant {
   static const int disposed = 0;
   static const int ready = 1;
-  static const int speaking = 2;
-  static const int listening = 3;
-  static const int busy = 9;
+  static const int busy = 2;
+  static const int speaking = 10;
+  static const int speaking_paused = 11;
+  static const int listening = 20;
 
   /// Channel
   static const MethodChannel _channel = const MethodChannel('voice_assistant');
@@ -52,6 +53,8 @@ class VoiceAssistant {
   /// to allow flutter to know when speaking is finished
   /// and what text is coming back from listening.
 
+  /// TODO: Initialize only listener or speech rather than both?
+
 
   Future<Null> speakText(String text) async {
     if (_state == ready) {
@@ -64,6 +67,12 @@ class VoiceAssistant {
       }
     }
   }
+
+  Future<Null> pauseSpeaking() async {}
+
+  Future<Null> continueSpeaking() async {}
+
+  Future<Null> stopSpeaking() async {}
 
   Future<Null> startListening() async {}
 
