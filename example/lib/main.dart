@@ -14,6 +14,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final VoiceAssistant voice = new VoiceAssistant();
   bool voiceReady = false;
+  final TextEditingController inputController = new TextEditingController();
 
   @override
   void initState() {
@@ -38,11 +39,27 @@ class _MyAppState extends State<MyApp> {
         ),
         body: new Center(
           child: new Container(
-            child: new RaisedButton(child: const Text('Speak Something'), onPressed: () {
-              if (voiceReady) {
-                voice.speakText('This is a test to see if I can speak to you the user.');
-              }
-            })
+            child: new Column(
+              children: <Widget> [
+                new TextField(controller: inputController, maxLines: 5),
+                new RaisedButton(child: const Text('Text-to-Speech'), onPressed: () {
+                  if (voiceReady) {
+                    voice.speakText(inputController.text);
+                  }
+                }),
+                new RaisedButton(child: const Text('Speech-to-Text'), onPressed: () {
+                  if (voiceReady) {
+                    if (voice.state == VoiceAssistant.listening) {
+                      voice.stopListening().then((result) {
+                        inputController.text = result;
+                      });
+                    } else {
+                      voice.startListening();
+                    }
+                  }
+                }),
+              ]
+            )
           )
         ),
       ),

@@ -15,6 +15,7 @@ class VoiceAssistant {
 
   /// The state of [VoiceAssistant]
   int _state = disposed; 
+  int get state => _state;
 
   /// Initialize VoiceAssistant
   Future<Null> init() async {
