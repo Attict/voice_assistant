@@ -17,6 +17,12 @@ class VoiceAssistant {
   int _state = disposed; 
   int get state => _state;
 
+
+
+  /// Speech-to-Text Subscription
+  Stream<dynamic> _sttStream;
+  //StreamSubscription<dynamic> _sttSubscription;
+
   /// Initialize VoiceAssistant
   Future<Null> init() async {
     if (_state == disposed) {
@@ -75,10 +81,26 @@ class VoiceAssistant {
 
   Future<Null> stopSpeaking() async {}
 
-  Future<Null> startListening() async {}
+  Future<Null> startListening() async {
+    if (_state == ready) {
+      _channel.invokeMethod('startListening');
+      _sttStream = new EventChannel('voice_assistant/listener')
+        .receiveBroadcastStream();
+      _state = listening;
+    }
+  }
 
   Future<String> stopListening() async {
+    _channel.invokeMethod('stopListening').then((_) {
+      _state = ready;
+    });
     return null; 
+  }
+
+  Stream<String> get listeningStream {
+    return _sttStream.map((dynamic result) {
+      return result as String;
+    });
   }
 
   /// TODO: Intents

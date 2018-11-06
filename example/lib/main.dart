@@ -30,6 +30,10 @@ class _MyAppState extends State<MyApp> {
     super.dispose();
   }
 
+  void _listener(dynamic event) {
+    inputController.text = event;
+  }
+
   @override
   Widget build(BuildContext context) {
     return new MaterialApp(
@@ -54,7 +58,9 @@ class _MyAppState extends State<MyApp> {
                         inputController.text = result;
                       });
                     } else {
-                      voice.startListening();
+                      voice.startListening().then((_) {
+                        voice.listeningStream.listen(_listener);
+                      });
                     }
                   }
                 }),

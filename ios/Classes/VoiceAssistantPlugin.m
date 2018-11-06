@@ -1,22 +1,4 @@
 #import "VoiceAssistantPlugin.h"
-#import <Speech/Speech.h>
-
-API_AVAILABLE(ios(10.0))
-@interface VoiceAssistantListener : NSObject<FlutterPlugin, FlutterStreamHandler>
-@property(nonatomic) FlutterEventChannel *channel;
-@property(nonatomic) FlutterEventSink eventSink;
-@property(strong, nonatomic) NSString *text;
-@property(strong, nonatomic) SFSpeechRecognizer *recognizer;
-@property(strong, nonatomic) SFSpeechAudioBufferRecognitionRequest *request;
-@property(strong, nonatomic) SFSpeechRecognitionTask *task;
-@property(strong, nonatomic) AVAudioEngine *audioEngine;
-
-- (instancetype)init;
-- (void)dispose;
-- (void)requestPermission;
-- (void)startListening;
-- (NSString *)stopListening;
-@end
 
 @implementation VoiceAssistantListener
 
@@ -24,29 +6,29 @@ API_AVAILABLE(ios(10.0))
   self = [super init];
   _recognizer = [[SFSpeechRecognizer alloc] initWithLocale:[[NSLocale alloc] initWithLocaleIdentifier:@"en_US"]];
   _recognizer.delegate = self;
-    if (@available(iOS 10.0, *)) {
-        [SFSpeechRecognizer requestAuthorization:^(SFSpeechRecognizerAuthorizationStatus status) {
-            switch (status) {
-                case SFSpeechRecognizerAuthorizationStatusAuthorized:
-                    NSLog(@"Authorized");
-                    break;
-                case SFSpeechRecognizerAuthorizationStatusDenied:
-                    NSLog(@"Denied");
-                    break;
-                case SFSpeechRecognizerAuthorizationStatusNotDetermined:
-                    NSLog(@"Not Determined");
-                    break;
-                case SFSpeechRecognizerAuthorizationStatusRestricted:
-                    NSLog(@"Restricted");
-                    break;
-                default:
-                    break;
-            }
-        }];
-    } else {
-        // Fallback on earlier versions
-    }
-    return self;
+  if (@available(iOS 10.0, *)) {
+    [SFSpeechRecognizer requestAuthorization:^(SFSpeechRecognizerAuthorizationStatus status) {
+      switch (status) {
+        case SFSpeechRecognizerAuthorizationStatusAuthorized:
+          NSLog(@"Authorized");
+          break;
+        case SFSpeechRecognizerAuthorizationStatusDenied:
+          NSLog(@"Denied");
+          break;
+        case SFSpeechRecognizerAuthorizationStatusNotDetermined:
+          NSLog(@"Not Determined");
+          break;
+        case SFSpeechRecognizerAuthorizationStatusRestricted:
+          NSLog(@"Restricted");
+          break;
+        default:
+          break;
+      }
+    }];
+  } else {
+    // Fallback on earlier versions
+  }
+  return self;
 }
 
 - (void)dispose {
@@ -55,7 +37,7 @@ API_AVAILABLE(ios(10.0))
   _request = nil;
   _recognizer = nil;
   _audioEngine = nil;
-  _channel = nil;
+  _eventChannel = nil;
   _eventSink = nil;
 }
 
@@ -88,7 +70,8 @@ API_AVAILABLE(ios(10.0))
         if (result) {
             // Whatever you say in the microphone after pressing the button should be being logged
             // in the console.
-            NSLog(@"RESULT:%@",result.bestTranscription.formattedString);
+            NSString *text = result.bestTranscription.formattedString;
+            [self updateText:text];
             isFinal = !result.isFinal;
         }
         if (error) {
@@ -111,15 +94,16 @@ API_AVAILABLE(ios(10.0))
     NSLog(@"Say Something, I'm listening"); 
 }
 
-- (NSString *)stopListening {
-  [_audioEngine stop];
-  [self->_request endAudio];
-  _audioEngine = nil;
-  return _text;
+- (void)updateText:(NSString *)text {
+  _text = text;
+  _eventSink(text);
 }
 
-+ (void)registerWithRegistrar:(nonnull NSObject<FlutterPluginRegistrar> *)registrar {
-
+- (NSString *)stopListening {
+  [_audioEngine stop];
+  [_request endAudio];
+  _audioEngine = nil;
+  return _text;
 }
 
 - (FlutterError * _Nullable)onCancelWithArguments:(id _Nullable)arguments {
@@ -137,11 +121,19 @@ API_AVAILABLE(ios(10.0))
 
 @implementation VoiceAssistantPlugin
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
+
   FlutterMethodChannel* channel = [FlutterMethodChannel
       methodChannelWithName:@"voice_assistant"
             binaryMessenger:[registrar messenger]];
-  VoiceAssistantPlugin* instance = [[VoiceAssistantPlugin alloc] init];
+  VoiceAssistantPlugin* instance = [[VoiceAssistantPlugin alloc] initWithRegistrar:registrar];
   [registrar addMethodCallDelegate:instance channel:channel];
+}
+
+- (instancetype)initWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
+  self = [super init];
+  _registrar = registrar;
+  _messenger = [registrar messenger];
+  return self;
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
@@ -156,6 +148,12 @@ API_AVAILABLE(ios(10.0))
     //NSInteger rate = call.arguments[@"rate"];
     [self speakText:text];
     result(nil);
+  } else if ([@"startListening" isEqualToString:call.method]) {
+    [self startListening];
+    result(nil);
+  } else if ([@"stopListening" isEqualToString:call.method]) {
+    [self stopListening];
+    result(nil);
   } else {
     result(FlutterMethodNotImplemented);
   }
@@ -163,18 +161,31 @@ API_AVAILABLE(ios(10.0))
 
 - (BOOL)initialize {
   NSLog(@"Init Voice Assistant");
+  _listener = [[VoiceAssistantListener alloc] init];
   _synthesizer = [[AVSpeechSynthesizer alloc] init];
+
+  FlutterEventChannel *channel = [FlutterEventChannel
+        eventChannelWithName:@"voice_assistant/listener"
+             binaryMessenger:_messenger];
+  [channel setStreamHandler:_listener];
+    _listener.eventChannel = channel;
+
   return YES;
 }
 
 - (BOOL)dispose {
   NSLog(@"Dispose Voice Assistant");
   _synthesizer = nil;
+    [_listener dispose];
+    _listener = nil;
   return YES;
 }
 
 - (void)speakText:(NSString *)text {
   NSLog(@"Speak Text %@", text);
+  if (_synthesizer == nil) {
+    NSLog(@"Synth is nil");
+  }
   AVSpeechUtterance *utterance = [[AVSpeechUtterance alloc] initWithString:text];
   [_synthesizer speakUtterance:utterance];
   utterance = nil;
@@ -182,9 +193,13 @@ API_AVAILABLE(ios(10.0))
 }
 
 - (void)startListening {
-
+  NSLog(@"iOS started listening");
+  [_listener startListening];
 }
 
-- (void)stopListening {}
+- (void)stopListening {
+  NSLog(@"iOS stopped listening");
+  [_listener stopListening];
+}
 
 @end
