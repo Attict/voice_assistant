@@ -100,6 +100,8 @@
 }
 
 - (NSString *)stopListening {
+  [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
+  [[AVAudioSession sharedInstance] setActive: NO error: nil];
   [_audioEngine stop];
   [_request endAudio];
   _audioEngine = nil;
