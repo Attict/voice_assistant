@@ -10,16 +10,12 @@
     [SFSpeechRecognizer requestAuthorization:^(SFSpeechRecognizerAuthorizationStatus status) {
       switch (status) {
         case SFSpeechRecognizerAuthorizationStatusAuthorized:
-          NSLog(@"Authorized");
           break;
         case SFSpeechRecognizerAuthorizationStatusDenied:
-          NSLog(@"Denied");
           break;
         case SFSpeechRecognizerAuthorizationStatusNotDetermined:
-          NSLog(@"Not Determined");
           break;
         case SFSpeechRecognizerAuthorizationStatusRestricted:
-          NSLog(@"Restricted");
           break;
         default:
           break;
@@ -91,12 +87,13 @@
     // Starts the audio engine, i.e. it starts listening.
     [_audioEngine prepare];
     [_audioEngine startAndReturnError:&error];
-    NSLog(@"Say Something, I'm listening"); 
 }
 
 - (void)updateText:(NSString *)text {
-  _text = text;
-  _eventSink(text);
+  if (text != nil) {
+    _text = text;
+    _eventSink(text);
+  }
 }
 
 - (NSString *)stopListening {
@@ -104,7 +101,6 @@
   [[AVAudioSession sharedInstance] setActive: NO error: nil];
   [_audioEngine stop];
   [_request endAudio];
-  _audioEngine = nil;
   return _text;
 }
 
@@ -154,15 +150,14 @@
     [self startListening];
     result(nil);
   } else if ([@"stopListening" isEqualToString:call.method]) {
-    [self stopListening];
-    result(nil);
+    NSString *text = [self stopListening];
+    result(text);
   } else {
     result(FlutterMethodNotImplemented);
   }
 }
 
 - (BOOL)initialize {
-  NSLog(@"Init Voice Assistant");
   _listener = [[VoiceAssistantListener alloc] init];
   _synthesizer = [[AVSpeechSynthesizer alloc] init];
 
@@ -171,12 +166,10 @@
              binaryMessenger:_messenger];
   [channel setStreamHandler:_listener];
     _listener.eventChannel = channel;
-
   return YES;
 }
 
 - (BOOL)dispose {
-  NSLog(@"Dispose Voice Assistant");
   _synthesizer = nil;
     [_listener dispose];
     _listener = nil;
@@ -184,7 +177,6 @@
 }
 
 - (void)speakText:(NSString *)text {
-  NSLog(@"Speak Text %@", text);
   if (_synthesizer == nil) {
     NSLog(@"Synth is nil");
   }
@@ -195,13 +187,11 @@
 }
 
 - (void)startListening {
-  NSLog(@"iOS started listening");
   [_listener startListening];
 }
 
-- (void)stopListening {
-  NSLog(@"iOS stopped listening");
-  [_listener stopListening];
+- (NSString *)stopListening {
+  return [_listener stopListening];
 }
 
 @end

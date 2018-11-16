@@ -83,23 +83,29 @@ class VoiceAssistant {
 
   Future<Null> startListening() async {
     if (_state == ready) {
-      _channel.invokeMethod('startListening');
+      await _channel.invokeMethod('startListening');
       _sttStream = new EventChannel('voice_assistant/listener')
         .receiveBroadcastStream();
       _state = listening;
+      print(_state);
     }
   }
 
   Future<String> stopListening() async {
-    _channel.invokeMethod('stopListening').then((_) {
+    if (state == listening) {
+      String result = await _channel.invokeMethod('stopListening');
       _state = ready;
-    });
-    return null; 
+      return result;
+    }
+    return null;
   }
 
   Stream<String> get listeningStream {
     return _sttStream.map((dynamic result) {
-      return result as String;
+      if (result != null) {
+        return result as String;
+      }
+      return '';
     });
   }
 
